@@ -1,2 +1,3 @@
-# internal.eliodinino.com
-Landing page for my internally hosted services
+# Homelab Landing Page ([internal.eliodinino.com](https://internal.eliodinino.com))
+
+A simple landing page for [my internally hosted services](https://github.com/ElioDiNino/Homelab).
