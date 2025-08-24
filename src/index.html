@@ -6,7 +6,7 @@
 
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com/; connect-src 'self' https://ping.internal.eliodinino.com"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://ingest.eliodinino.com https://static.cloudflareinsights.com/; connect-src 'self' https://ping.internal.eliodinino.com https://ingest.eliodinino.com"
     />
 
     <meta name="robots" content="noindex" />
@@ -45,6 +45,9 @@
     />
     <meta name="apple-mobile-web-app-title" content="Homelab" />
     <link rel="manifest" href="static/site.webmanifest" />
+
+    <script defer data-domain="internal.eliodinino.com" data-api="https://ingest.eliodinino.com/analytics/api/event" src="https://ingest.eliodinino.com/analytics/js/script.js"></script>
+    <script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
 
     <style>
       body,
