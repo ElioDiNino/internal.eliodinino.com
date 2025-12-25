@@ -22,4 +22,5 @@ jobs:
         uses: rossjrw/pr-preview-action@55147b5848acb4ab980e55ff0bdc228addacdae0 # 1.7.0
         with:
           source-dir: src
-          custom-url: internal.eliodinino.com
+          pages-base-url: internal.eliodinino.com
+          wait-for-pages-deployment: true
