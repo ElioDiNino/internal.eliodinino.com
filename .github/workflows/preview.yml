@@ -16,10 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Deploy preview
-        uses: rossjrw/pr-preview-action@v1
+        uses: rossjrw/pr-preview-action@55147b5848acb4ab980e55ff0bdc228addacdae0 # 1.7.0
         with:
           source-dir: src
-          custom-url: internal.eliodinino.com
+          pages-base-url: internal.eliodinino.com
+          wait-for-pages-deployment: true
