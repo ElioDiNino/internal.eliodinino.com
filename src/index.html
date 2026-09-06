@@ -29,7 +29,6 @@
 
     <meta name="application-name" content="Homelab" />
 
-    <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <link
       rel="icon"
       type="image/png"
@@ -174,13 +173,14 @@
   </head>
   <body>
     <div class="container">
-      <div class="loader" id="loader"></div>
+      <div class="loader" id="loader" aria-hidden="true"></div>
 
       <svg
         class="status-icon"
         id="icon-alert"
         viewBox="0 0 24 24"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
         hidden
       >
         <path
@@ -188,7 +188,7 @@
         />
       </svg>
 
-      <div class="message" id="message">Connecting...</div>
+      <div class="message" id="message" role="status">Connecting...</div>
       <div class="attempt-count" id="attempt-count">Attempt 1 of 2</div>
 
       <div class="notice" id="notice" hidden>
@@ -220,11 +220,14 @@
       <a
         href="https://github.com/ElioDiNino/internal.eliodinino.com"
         target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View this page's source on GitHub"
       >
         <svg
           viewBox="0 0 16 16"
           fill="currentColor"
           xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
         >
           <path
             fill-rule="evenodd"
@@ -246,6 +249,11 @@
         const STALL_HINT_MS = 6000;
         const RETRY_DELAY_MS = 5000;
         const NOTE_VISIBLE_MS = 6000;
+        const REDIRECT_PARAM = "next";
+        // A single DNS label: letters, digits and inner hyphens, up to 63
+        // characters. Crucially it admits no dots, so a label can never reach
+        // past this page's own domain.
+        const SERVICE_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
         const el = {
           loader: document.getElementById("loader"),
@@ -262,6 +270,10 @@
           retryNote: document.getElementById("retry-note"),
         };
 
+        // Where to land once the connection succeeds, if the caller named a
+        // service. Read once, since the address cannot change under us.
+        const requestedService = readRequestedService();
+
         let attempt = 0;
         let attemptId = 0;
         let inFlight = false;
@@ -275,12 +287,32 @@
         // local, so the annotation is dropped after the first failure.
         let annotateAddressSpace = true;
 
-        function show(node, visible) {
-          if (visible) {
-            node.removeAttribute("hidden");
-          } else {
-            node.setAttribute("hidden", "");
+        // Names one service in my homelab as a subdomain label with an
+        // optional path: ?next=grafana or ?next=grafana/d/abc123/my-dash. The
+        // host is always assembled from a validated label plus this page's own
+        // hostname, so the parameter cannot send anyone off this domain. The
+        // path is concatenated rather than resolved through URL(), which would
+        // read a leading "//" as a new host.
+        function readRequestedService() {
+          const value = new URLSearchParams(window.location.search).get(
+            REDIRECT_PARAM
+          );
+          if (!value) {
+            return null;
           }
+          const slash = value.indexOf("/");
+          const label = (
+            slash === -1 ? value : value.slice(0, slash)
+          ).toLowerCase();
+          const path = slash === -1 ? "" : value.slice(slash);
+          if (!SERVICE_LABEL.test(label)) {
+            return null;
+          }
+          return `https://${label}.${window.location.hostname}${path}`;
+        }
+
+        function show(node, visible) {
+          node.toggleAttribute("hidden", !visible);
         }
 
         function permissionState() {
@@ -406,7 +438,7 @@
             done = true;
             clearTimers();
             el.message.textContent = "Connected, redirecting...";
-            window.location.href = data.dashboard;
+            window.location.href = requestedService || data.dashboard;
           });
         }
 
@@ -435,8 +467,11 @@
           }
           const id = ++attemptId;
           viewConnecting();
-          controller = new AbortController();
-          const signal = controller.signal;
+          // Held locally as well, because abortInFlight() clears the shared
+          // reference and this attempt's own timer must not follow it.
+          const attemptController = new AbortController();
+          const signal = attemptController.signal;
+          controller = attemptController;
           inFlight = true;
 
           const timeout = setTimeout(() => {
@@ -447,7 +482,7 @@
               viewConnectionFailed();
               return;
             }
-            controller.abort();
+            attemptController.abort();
           }, ATTEMPT_TIMEOUT_MS);
 
           hintTimer = setTimeout(() => {
@@ -500,7 +535,8 @@
         }
 
         function onPermissionChange() {
-          if (permissionState() === "granted") {
+          const state = permissionState();
+          if (state === "granted") {
             if (inFlight && !done) {
               // The request that raised the prompt is now free to finish.
               viewConnecting();
@@ -510,7 +546,7 @@
               // waiting on it.
               restart();
             }
-          } else if (permissionState() === "denied") {
+          } else if (state === "denied") {
             viewPermissionBlocked();
           }
         }
