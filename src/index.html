@@ -241,19 +241,23 @@
       document.addEventListener("DOMContentLoaded", () => {
         const PING_URL = "https://ping.internal.eliodinino.com";
         const MAX_ATTEMPTS = 2;
-        // The ping host lives on a Tailscale address, so a request can stall
-        // for two reasons that look identical: the browser pausing it behind
-        // a Local Network Access prompt, or the tailnet simply not being
-        // connected. Nothing distinguishes them, so never claim to know.
+        // A stall is ambiguous: the browser may be holding the request behind
+        // a Local Network Access prompt, or the tailnet may just be off.
+        // Nothing distinguishes them, so the UI never claims to know which.
         const ATTEMPT_TIMEOUT_MS = 15000;
         const STALL_HINT_MS = 6000;
         const RETRY_DELAY_MS = 5000;
         const NOTE_VISIBLE_MS = 6000;
         const REDIRECT_PARAM = "next";
-        // A single DNS label: letters, digits and inner hyphens, up to 63
-        // characters. Crucially it admits no dots, so a label can never reach
+        // Read from the raw address: URLSearchParams would take an unescaped
+        // "&" as the end of the value and drop the target's later parameters.
+        const REDIRECT_VALUE = new RegExp(`[?&]${REDIRECT_PARAM}=(.*)$`);
+        // A single DNS label. It admits no dots, so a label can never reach
         // past this page's own domain.
         const SERVICE_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+        // Labels allowed in front of this page's hostname, so service.staging
+        // resolves but a longer chain does not.
+        const MAX_SERVICE_LABELS = 2;
 
         const el = {
           loader: document.getElementById("loader"),
@@ -270,8 +274,7 @@
           retryNote: document.getElementById("retry-note"),
         };
 
-        // Where to land once the connection succeeds, if the caller named a
-        // service. Read once, since the address cannot change under us.
+        // Where to land on success. Read once; the address cannot change.
         const requestedService = readRequestedService();
 
         let attempt = 0;
@@ -287,28 +290,42 @@
         // local, so the annotation is dropped after the first failure.
         let annotateAddressSpace = true;
 
-        // Names one service in my homelab as a subdomain label with an
-        // optional path: ?next=grafana or ?next=grafana/d/abc123/my-dash. The
-        // host is always assembled from a validated label plus this page's own
-        // hostname, so the parameter cannot send anyone off this domain. The
-        // path is concatenated rather than resolved through URL(), which would
-        // read a leading "//" as a new host.
+        // Names one service as up to two subdomain labels with an optional
+        // path and query: ?next=service.staging/d/abc123?from=now-6h&to=now.
+        // The host is built from validated labels plus this page's hostname,
+        // so the parameter cannot leave this domain. Consumes the rest of the
+        // address, so it has to come last.
         function readRequestedService() {
-          const value = new URLSearchParams(window.location.search).get(
-            REDIRECT_PARAM
-          );
-          if (!value) {
+          const match = REDIRECT_VALUE.exec(window.location.search);
+          if (!match) {
             return null;
           }
-          const slash = value.indexOf("/");
-          const label = (
-            slash === -1 ? value : value.slice(0, slash)
+          let value;
+          try {
+            value = decodeURIComponent(match[1]);
+          } catch {
+            return null; // A malformed escape, such as a lone "%".
+          }
+          // The subdomain ends at the first "/" or "?", so a query needs no
+          // path in front of it.
+          const boundary = value.search(/[/?]/);
+          const subdomain = (
+            boundary === -1 ? value : value.slice(0, boundary)
           ).toLowerCase();
-          const path = slash === -1 ? "" : value.slice(slash);
-          if (!SERVICE_LABEL.test(label)) {
+          // A stray dot leaves an empty label, which the pattern rejects.
+          const labels = subdomain.split(".");
+          if (
+            labels.length > MAX_SERVICE_LABELS ||
+            !labels.every((label) => SERVICE_LABEL.test(label))
+          ) {
             return null;
           }
-          return `https://${label}.${window.location.hostname}${path}`;
+          const rest = boundary === -1 ? "" : value.slice(boundary);
+          // A bare query needs the root path in front of it.
+          const tail = rest.startsWith("?") ? `/${rest}` : rest;
+          // Concatenated rather than resolved through URL(), which would read
+          // a leading "//" as a new host.
+          return `https://${subdomain}.${window.location.hostname}${tail}`;
         }
 
         function show(node, visible) {
@@ -451,9 +468,8 @@
             return;
           }
           attempt++;
-          // Retrying while the permission is unresolved would raise the prompt
-          // again, and Chromium embargoes an origin for a week after three
-          // dismissals, so do not spend the user's dismissals for them.
+          // Retrying while the permission is unresolved re-raises the prompt,
+          // and Chromium embargoes an origin for a week after three dismissals.
           if (attempt < MAX_ATTEMPTS && permissionState() !== "prompt") {
             retryTimer = setTimeout(attemptConnection, RETRY_DELAY_MS);
           } else {
@@ -467,8 +483,8 @@
           }
           const id = ++attemptId;
           viewConnecting();
-          // Held locally as well, because abortInFlight() clears the shared
-          // reference and this attempt's own timer must not follow it.
+          // Held locally too: abortInFlight() clears the shared reference, and
+          // this attempt's own timer must not follow it.
           const attemptController = new AbortController();
           const signal = attemptController.signal;
           controller = attemptController;
@@ -476,9 +492,8 @@
 
           const timeout = setTimeout(() => {
             if (permissionState() === "prompt") {
-              // A permission prompt may still be on screen awaiting an answer,
-              // and cancelling would take it away. Leave the request running so
-              // that answering it still works, and just report what we know.
+              // A prompt may still be on screen, and cancelling would take it
+              // away. Leave the request running and report only what we know.
               viewConnectionFailed();
               return;
             }
@@ -495,8 +510,7 @@
             .then(handleResponse)
             .catch(() => {
               // A stalled attempt is left running rather than cancelled, so
-              // restarting aborts it here. Its rejection then describes a
-              // request nobody is waiting on any more.
+              // restarting aborts it here, for a request nobody awaits.
               if (id === attemptId) {
                 handleFailure();
               }
@@ -510,9 +524,8 @@
             });
         }
 
-        // Answers "Check again" in place. While the permission is blocked the
-        // browser rejects instantly, so kicking off a connection would only
-        // flash the spinner for a frame before landing back here.
+        // Answers "Check again" in place: while blocked the browser rejects
+        // instantly, so connecting would only flash the spinner for a frame.
         function stillBlocked() {
           clearTimeout(noteTimer);
           el.retryNote.textContent = "Still blocked. Nothing has changed yet.";
@@ -541,9 +554,8 @@
               // The request that raised the prompt is now free to finish.
               viewConnecting();
             } else {
-              // Anything still hanging around is stale, and a stalled request
-              // is not guaranteed to ever settle, so start clean rather than
-              // waiting on it.
+              // Anything still around is stale, and a stalled request may
+              // never settle, so start clean rather than waiting on it.
               restart();
             }
           } else if (state === "denied") {
