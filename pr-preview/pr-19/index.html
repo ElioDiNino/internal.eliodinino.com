@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://ingest.eliodinino.com https://static.cloudflareinsights.com/; connect-src 'self' https://ping.internal.eliodinino.com https://ingest.eliodinino.com"
+    />
+
+    <meta name="robots" content="noindex" />
+
+    <title>Connecting...</title>
+    <meta name="author" content="Elio Di Nino" />
+    <meta name="description" content="Elio's Homelab Launch Page" />
+
+    <link rel="canonical" href="https://internal.eliodinino.com" />
+
+    <meta property="og:url" content="https://internal.eliodinino.com" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Elio's Homelab" />
+    <meta
+      property="og:description"
+      content="A simple landing page for my internally hosted services"
+    />
+    <meta property="og:site_name" content="Elio Di Nino" />
+    <meta property="og:locale" content="en_CA" />
+
+    <meta name="application-name" content="Homelab" />
+
+    <link
+      rel="icon"
+      type="image/png"
+      href="static/favicon-48x48.png"
+      sizes="48x48"
+    />
+    <link rel="icon" type="image/svg+xml" href="static/favicon.svg" />
+    <link rel="shortcut icon" href="static/favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="static/apple-touch-icon.png"
+    />
+    <meta name="apple-mobile-web-app-title" content="Homelab" />
+    <link rel="manifest" href="static/site.webmanifest" />
+
+    <script async src="https://ingest.eliodinino.com/analytics/js/pa-abHOrwx-YnTmAS2nzNWXX.js"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init({
+        endpoint: "https://ingest.eliodinino.com/analytics/api/event"
+      })
+    </script>
+
+    <style>
+      body,
+      html {
+        height: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #121212;
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-grow: 1;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .loader {
+        width: 75px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        border: 10px solid;
+        border-color: #fff #0000;
+        animation: l1 1s infinite;
+      }
+      @keyframes l1 {
+        to {
+          transform: rotate(0.5turn);
+        }
+      }
+      .status-icon {
+        width: 100px;
+        height: 100px;
+        fill: #ffffff;
+      }
+      .message {
+        font-size: 1.5em;
+        color: #ffffff;
+        margin-top: 20px;
+        text-align: center;
+      }
+      .attempt-count {
+        font-size: 1.2em;
+        color: #9a9a9a;
+        margin-top: 10px;
+        text-align: center;
+      }
+      .notice {
+        max-width: 34rem;
+        margin-top: 24px;
+        padding: 16px 20px;
+        border: 1px solid #2e2e2e;
+        border-radius: 10px;
+        background-color: #1b1b1b;
+        text-align: left;
+        line-height: 1.5;
+      }
+      .notice-title {
+        margin: 0;
+        font-size: 1.05em;
+        font-weight: bold;
+      }
+      .notice-body {
+        margin: 8px 0 0;
+        font-size: 0.95em;
+        color: #cfcfcf;
+      }
+      .notice-steps {
+        margin: 12px 0 0;
+        padding-left: 20px;
+        font-size: 0.95em;
+        color: #cfcfcf;
+      }
+      .notice-steps li + li {
+        margin-top: 4px;
+      }
+      .retry {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-family: inherit;
+        font-size: 1em;
+        color: #ffffff;
+        background-color: transparent;
+        border: 1px solid #555555;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .retry:hover {
+        background-color: #1f1f1f;
+      }
+      .retry-note {
+        margin: 12px 0 0;
+        font-size: 0.9em;
+        color: #9a9a9a;
+        text-align: center;
+      }
+      footer {
+        margin-top: 20px;
+        padding-bottom: 20px;
+      }
+      footer a {
+        color: #ffffff;
+        text-decoration: none;
+      }
+      footer svg {
+        width: 24px;
+        height: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="loader" id="loader" aria-hidden="true"></div>
+
+      <svg
+        class="status-icon"
+        id="icon-alert"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        hidden
+      >
+        <path
+          d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm-1-15h2v6h-2zm0 8h2v2h-2z"
+        />
+      </svg>
+
+      <div class="message" id="message" role="status">Connecting...</div>
+      <div class="attempt-count" id="attempt-count">Attempt 1 of 2</div>
+
+      <div class="notice" id="notice" hidden>
+        <p class="notice-title" id="notice-title"></p>
+        <p class="notice-body" id="notice-body"></p>
+        <ul class="notice-steps" id="notice-checks" hidden>
+          <li>Is Tailscale connected on this device?</li>
+          <li id="check-permission">
+            If your browser asked to allow local network access, choose
+            &ldquo;Allow&rdquo;.
+          </li>
+        </ul>
+        <ol class="notice-steps" id="notice-steps" hidden>
+          <li>
+            Open this page&rsquo;s site settings, usually behind the icon next
+            to the web address.
+          </li>
+          <li>
+            Set &ldquo;Local network access&rdquo; to &ldquo;Allow&rdquo;.
+          </li>
+          <li>Reload the page, or choose &ldquo;Check again&rdquo;.</li>
+        </ol>
+      </div>
+
+      <button class="retry" id="retry" type="button" hidden>Try again</button>
+      <p class="retry-note" id="retry-note" aria-live="polite" hidden></p>
+    </div>
+    <footer>
+      <a
+        href="https://github.com/ElioDiNino/internal.eliodinino.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View this page's source on GitHub"
+      >
+        <svg
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+          />
+        </svg>
+      </a>
+    </footer>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const PING_URL = "https://ping.internal.eliodinino.com";
+        const MAX_ATTEMPTS = 2;
+        // A stall is ambiguous: the browser may be holding the request behind
+        // a Local Network Access prompt, or the tailnet may just be off.
+        // Nothing distinguishes them, so the UI never claims to know which.
+        const ATTEMPT_TIMEOUT_MS = 15000;
+        const STALL_HINT_MS = 6000;
+        const RETRY_DELAY_MS = 5000;
+        const NOTE_VISIBLE_MS = 6000;
+        const REDIRECT_PARAM = "next";
+        // Read from the raw address: URLSearchParams would take an unescaped
+        // "&" as the end of the value and drop the target's later parameters.
+        const REDIRECT_VALUE = new RegExp(`[?&]${REDIRECT_PARAM}=(.*)$`);
+        // A single DNS label. It admits no dots, so a label can never reach
+        // past this page's own domain.
+        const SERVICE_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+        // Labels allowed in front of this page's hostname, so service.staging
+        // resolves but a longer chain does not.
+        const MAX_SERVICE_LABELS = 2;
+
+        const el = {
+          loader: document.getElementById("loader"),
+          iconAlert: document.getElementById("icon-alert"),
+          message: document.getElementById("message"),
+          attempts: document.getElementById("attempt-count"),
+          notice: document.getElementById("notice"),
+          noticeTitle: document.getElementById("notice-title"),
+          noticeBody: document.getElementById("notice-body"),
+          noticeChecks: document.getElementById("notice-checks"),
+          checkPermission: document.getElementById("check-permission"),
+          noticeSteps: document.getElementById("notice-steps"),
+          retry: document.getElementById("retry"),
+          retryNote: document.getElementById("retry-note"),
+        };
+
+        // Where to land on success. Read once; the address cannot change.
+        const requestedService = readRequestedService();
+
+        let attempt = 0;
+        let attemptId = 0;
+        let inFlight = false;
+        let done = false;
+        let controller = null;
+        let hintTimer = null;
+        let retryTimer = null;
+        let permissionStatus = null;
+        let noteTimer = null;
+        // Chromium rejects an annotated request whose host turns out not to be
+        // local, so the annotation is dropped after the first failure.
+        let annotateAddressSpace = true;
+
+        // Names one service as up to two subdomain labels with an optional
+        // path and query: ?next=service.staging/d/abc123?from=now-6h&to=now.
+        // The host is built from validated labels plus this page's hostname,
+        // so the parameter cannot leave this domain. Consumes the rest of the
+        // address, so it has to come last.
+        function readRequestedService() {
+          const match = REDIRECT_VALUE.exec(window.location.search);
+          if (!match) {
+            return null;
+          }
+          let value;
+          try {
+            value = decodeURIComponent(match[1]);
+          } catch {
+            return null; // A malformed escape, such as a lone "%".
+          }
+          // The subdomain ends at the first "/" or "?", so a query needs no
+          // path in front of it.
+          const boundary = value.search(/[/?]/);
+          const subdomain = (
+            boundary === -1 ? value : value.slice(0, boundary)
+          ).toLowerCase();
+          // A stray dot leaves an empty label, which the pattern rejects.
+          const labels = subdomain.split(".");
+          if (
+            labels.length > MAX_SERVICE_LABELS ||
+            !labels.every((label) => SERVICE_LABEL.test(label))
+          ) {
+            return null;
+          }
+          const rest = boundary === -1 ? "" : value.slice(boundary);
+          // A bare query needs the root path in front of it.
+          const tail = rest.startsWith("?") ? `/${rest}` : rest;
+          // Concatenated rather than resolved through URL(), which would read
+          // a leading "//" as a new host.
+          return `https://${subdomain}.${window.location.hostname}${tail}`;
+        }
+
+        function show(node, visible) {
+          node.toggleAttribute("hidden", !visible);
+        }
+
+        function permissionState() {
+          return permissionStatus ? permissionStatus.state : "unsupported";
+        }
+
+        function clearTimers() {
+          clearTimeout(hintTimer);
+          clearTimeout(retryTimer);
+          hintTimer = null;
+          retryTimer = null;
+        }
+
+        function setNotice(title, body, opts = {}) {
+          el.noticeTitle.textContent = title;
+          el.noticeBody.textContent = body;
+          show(el.noticeBody, !!body);
+          show(el.noticeChecks, !!opts.checks);
+          show(
+            el.checkPermission,
+            !!opts.checks && permissionState() === "prompt",
+          );
+          show(el.noticeSteps, !!opts.steps);
+          show(el.notice, true);
+        }
+
+        function viewConnecting() {
+          document.title = "Connecting...";
+          show(el.loader, true);
+          show(el.iconAlert, false);
+          el.message.textContent = "Connecting...";
+          el.attempts.textContent = `Attempt ${Math.min(
+            attempt + 1,
+            MAX_ATTEMPTS,
+          )} of ${MAX_ATTEMPTS}`;
+          show(el.attempts, true);
+          show(el.notice, false);
+          show(el.retry, false);
+          show(el.retryNote, false);
+        }
+
+        function viewStalled() {
+          setNotice(
+            "Taking longer than usual",
+            "While this keeps trying, check the following:",
+            { checks: true },
+          );
+        }
+
+        function viewFailure(title, message, retryLabel) {
+          done = true;
+          clearTimers();
+          document.title = title;
+          show(el.loader, false);
+          show(el.iconAlert, true);
+          el.message.textContent = message;
+          show(el.attempts, false);
+          el.retry.textContent = retryLabel;
+          show(el.retry, true);
+        }
+
+        function viewConnectionFailed() {
+          viewFailure("Connection Failed", "Connection Failed", "Try again");
+          setNotice("Things to check", "", { checks: true });
+        }
+
+        function viewPermissionBlocked() {
+          viewFailure(
+            "Access Blocked",
+            "Local network access is blocked",
+            "Check again",
+          );
+          abortInFlight();
+          setNotice(
+            "How to allow it",
+            "Only you can change this, since the page cannot ask again.",
+            { steps: true },
+          );
+        }
+
+        function abortInFlight() {
+          if (controller) {
+            controller.abort();
+            controller = null;
+          }
+          inFlight = false;
+        }
+
+        function ping(signal) {
+          const plain = { signal, cache: "no-store" };
+          if (!annotateAddressSpace) {
+            return fetch(PING_URL, plain);
+          }
+          // Declares up front that this is a local network request, so the
+          // browser can prompt before it touches the network.
+          return fetch(PING_URL, {
+            ...plain,
+            targetAddressSpace: "local",
+          }).catch((error) => {
+            if (signal.aborted) {
+              throw error;
+            }
+            annotateAddressSpace = false;
+            return fetch(PING_URL, plain);
+          });
+        }
+
+        function handleResponse(response) {
+          if (response.status !== 200) {
+            throw new Error("Unexpected Status");
+          }
+          if (
+            !(response.headers.get("content-type") || "").includes(
+              "application/json",
+            )
+          ) {
+            throw new Error("Invalid Response Format");
+          }
+          return response.json().then((data) => {
+            if (!data || !data.dashboard) {
+              throw new Error("Invalid Response");
+            }
+            done = true;
+            clearTimers();
+            el.message.textContent = "Connected, redirecting...";
+            window.location.href = requestedService || data.dashboard;
+          });
+        }
+
+        function handleFailure() {
+          if (done) {
+            return;
+          }
+          if (permissionState() === "denied") {
+            viewPermissionBlocked();
+            return;
+          }
+          attempt++;
+          // Retrying while the permission is unresolved re-raises the prompt,
+          // and Chromium embargoes an origin for a week after three dismissals.
+          if (attempt < MAX_ATTEMPTS && permissionState() !== "prompt") {
+            retryTimer = setTimeout(attemptConnection, RETRY_DELAY_MS);
+          } else {
+            viewConnectionFailed();
+          }
+        }
+
+        function attemptConnection() {
+          if (done) {
+            return;
+          }
+          const id = ++attemptId;
+          viewConnecting();
+          // Held locally too: abortInFlight() clears the shared reference, and
+          // this attempt's own timer must not follow it.
+          const attemptController = new AbortController();
+          const signal = attemptController.signal;
+          controller = attemptController;
+          inFlight = true;
+
+          const timeout = setTimeout(() => {
+            if (permissionState() === "prompt") {
+              // A prompt may still be on screen, and cancelling would take it
+              // away. Leave the request running and report only what we know.
+              viewConnectionFailed();
+              return;
+            }
+            attemptController.abort();
+          }, ATTEMPT_TIMEOUT_MS);
+
+          hintTimer = setTimeout(() => {
+            if (inFlight) {
+              viewStalled();
+            }
+          }, STALL_HINT_MS);
+
+          ping(signal)
+            .then(handleResponse)
+            .catch(() => {
+              // A stalled attempt is left running rather than cancelled, so
+              // restarting aborts it here, for a request nobody awaits.
+              if (id === attemptId) {
+                handleFailure();
+              }
+            })
+            .finally(() => {
+              clearTimeout(timeout);
+              if (id === attemptId) {
+                clearTimeout(hintTimer);
+                inFlight = false;
+              }
+            });
+        }
+
+        // Answers "Check again" in place: while blocked the browser rejects
+        // instantly, so connecting would only flash the spinner for a frame.
+        function stillBlocked() {
+          clearTimeout(noteTimer);
+          el.retryNote.textContent = "Still blocked. Nothing has changed yet.";
+          show(el.retryNote, true);
+          noteTimer = setTimeout(() => {
+            show(el.retryNote, false);
+          }, NOTE_VISIBLE_MS);
+        }
+
+        function restart() {
+          if (permissionState() === "denied") {
+            stillBlocked();
+            return;
+          }
+          abortInFlight();
+          clearTimers();
+          done = false;
+          attempt = 0;
+          attemptConnection();
+        }
+
+        function onPermissionChange() {
+          const state = permissionState();
+          if (state === "granted") {
+            if (inFlight && !done) {
+              // The request that raised the prompt is now free to finish.
+              viewConnecting();
+            } else {
+              // Anything still around is stale, and a stalled request may
+              // never settle, so start clean rather than waiting on it.
+              restart();
+            }
+          } else if (state === "denied") {
+            viewPermissionBlocked();
+          }
+        }
+
+        function watchPermission() {
+          if (!navigator.permissions || !navigator.permissions.query) {
+            return Promise.resolve(null);
+          }
+          // Throws in browsers that do not know this permission name.
+          return navigator.permissions
+            .query({ name: "local-network-access" })
+            .then((status) => {
+              status.addEventListener("change", onPermissionChange);
+              return status;
+            })
+            .catch(() => {
+              return null;
+            });
+        }
+
+        el.retry.addEventListener("click", restart);
+
+        watchPermission().then((status) => {
+          permissionStatus = status;
+          if (permissionState() === "denied") {
+            viewPermissionBlocked();
+          } else {
+            attemptConnection();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
